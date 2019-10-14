@@ -1,0 +1,27 @@
+#include "order_market.h"
+
+using namespace std;
+
+int test(){
+	cout << "------------" <<endl;
+	HashMap<string, OrderShelf*, _HashFunc, _EqualKey> mapOrderShelf(100,NULL);
+	mapOrderShelf.add("1", new OrderShelf("cccc"));
+	if( NULL==mapOrderShelf.get("0"))
+		cout <<" NULL "<<endl;
+	cout << mapOrderShelf.get("1")->stock_number()<<endl;
+}
+
+
+int main()
+{
+//	test_order_shelf();
+//	test_hashmap();
+
+	OrderMarket	market;
+	AssetStore		store;
+	market.setAssetStore(&store);
+	market.test_addOrder(NULL);
+
+	cin.get();
+	return 0;
+}

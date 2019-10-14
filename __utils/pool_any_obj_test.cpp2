@@ -1,0 +1,100 @@
+
+#include "pool_any_obj.h"
+#include <string>
+
+
+void TestAny()
+{
+	Any n;
+	auto r = n.IsNull();            //true
+	std::string s1 = "hello";
+	n = s1;
+	n = "world";
+	n.AnyCast<int>();               //can not cast int to string
+	Any n1 = 1;
+	n1.Is<int>();                   //true
+}
+
+struct T_A
+{
+	T_A() {
+		cout << this << endl << __FUNCTION__ << endl;
+	}
+	T_A(int a, int b) :m_a(a), m_b(b) {
+		cout << this << endl << __FUNCTION__ << "	(int, int)" << endl;
+	}
+	void Fun() {
+		cout << this << endl << hex << m_a << " " << m_b++ << endl;
+	}
+	int m_a = 0;
+	int m_b = 0;
+};
+
+struct T_BB
+{
+	T_BB() {
+		cout << this << endl << __FUNCTION__ << endl;
+	}
+	void Fun() {
+		cout << this << endl << __FUNCTION__ << "" << endl;
+	}
+};
+
+void TestPool_AnyObj(Pool_AnyObj& pool)
+{
+	pool.Create<T_A>(2);
+	pool.Create<T_A, int, int>(2, 1, 1);			//具体实现 
+	pool.Create<T_BB>(3);
+
+	{
+		auto p = pool.Get<T_A>();
+		p->Fun();
+	}
+	auto p = pool.Get<T_A>();
+	p->Fun();
+
+	auto pb = pool.Get<T_BB>();
+	pb->Fun();
+	{
+		auto pb = pool.Get<T_BB>();
+		pb->Fun();
+	}
+
+	int a = 3, b = 4;
+	auto p3 = pool.Get<T_A>(a, b);
+	cout << p3 << endl;
+	{
+		auto p3 = pool.Get<T_A>(0x33, 4);
+		p3->Fun();
+		{
+			auto p3 = pool.Get<T_A>(0x333, 4);
+			p3->Fun();
+			{
+				auto p3 = pool.Get<T_A>(0x3333, 4);
+				p3->Fun();
+				{
+					auto p3 = pool.Get<T_A>(0x33333, 4);
+					p3->Fun();
+				}
+			}
+		}
+	}
+	{
+		auto p3 = pool.Get<T_A>(a + 6, b);
+		p3->Fun();
+		cout << p3 << endl;
+	}
+
+	//auto p0 = pool.Get<T_A>();
+	//p0->Fun();
+	//cout << p0 << endl;
+
+}
+
+int main() {
+	Pool_AnyObj pool;
+
+	TestPool_AnyObj(pool);
+
+	std::cin.get();
+}

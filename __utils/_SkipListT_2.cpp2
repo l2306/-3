@@ -1,0 +1,211 @@
+
+#ifndef _SKIPLIST_H_
+#define _SKIPLIST_H_
+
+#include <ctime>
+#include <cstdlib>
+
+/*
+SkipList:           
+    Level_End:  SkipNode     ->     SkipNode->... // N
+       | |         \                   \
+    Level_End:  SkipNode->SkipNode->SkipNode->... // 1
+*/
+
+template<typename ValueT>
+class SkipNode {
+private:
+	double 	key; 		// 排序值 模板T
+	ValueT 	value; 		// 保存对象
+	SkipNode* pNext;	// 水平节点
+	SkipNode* pDown;	// 下层节点
+public:
+	SkipNode(double k, T v)
+		:key(k),value(v), pNext(nullptr), pDown(nullptr)
+	{}
+	SkipNode(const SkipNode& e)
+		:key(e.key),value(e.value), pNext(nullptr), pDown(nullptr)
+	{}
+
+public:
+	bool operator< (const SkipNode& right) {	return key < right.key;		}
+	bool operator> (const SkipNode& right) {	return key > right.key;		}
+	bool operator<=(const SkipNode& right) {	return key <= right.key;	}
+	bool operator>=(const SkipNode& right) {	return key >= right.key;	}
+	bool operator==(const SkipNode& right) {	return key == right.key;	}
+	SkipNode*& next() {		return pNext;	}
+	SkipNode*& down() {		return pDown;	}
+};
+
+template<typename ValueT>
+class SkipList{
+private:a
+	typedef struct Level_End {
+		Level_End* up;				//上层
+		Level_End* down;			//下层
+		SkipNode<ValueT>* right;	//内容
+	}Level_End;
+	Level_End* header;				//头节点
+	int lvl_num;					// level_number 已存在的层数
+    int lvl_max;					// 最高层级
+	int ratio_l2h;					// 下层比上层
+	bool random() {					// 随机取值0,1
+		static int seed;
+		srand(seed);
+		return 0 ==(rand() % ratio_l2h) ;
+	}
+public:
+	SkipList_SkipNode(int ratio_l2h=2 ,int lvl_max=32) 
+		:lvl_num(1), seed(time(0)), ratio_l2h(ratio_l2h), lvl_max(lvl_max){
+		header = new Level_End();
+	}
+																/* 插入新元素 */
+	void insert(SkipNode<ValueT>* node) {						// 是一系列自底向上的操作
+		struct Level_End* cur_hdr = hdr;
+		
+		while (cur_hdr->down != nullptr)
+			cur_hdr = cur_hdr->down;							// hdr到达L1
+		
+		/* L1必定需要插入元素，	上面各层是否插入则根据random确定 */
+		int cur_lvl = 0; 										// current_level 当前层数
+		SkipNode<T>* save_node = nullptr; 						// 临时保存已经完成插入的节点指针
+		do {
+			SkipNode<T>* copy_node = new SkipNode<T>(*node);	// 拷贝新对象
+																
+			cur_lvl++;
+			if (lvl_num < cur_lvl) {                        // 当前层是否已经存在，如果不存在则新增
+				Level_End *new_hdr = new Level_End();
+				new_hdr->down = hdr;
+				hdr->up = new_hdr;
+				hdr = new_hdr;
+                lvl_num++;
+			}
+            
+			if (cur_lvl != 1){                // cur_lvl!=1表示cur_hdr需要上移并连接“同位素”指针
+                cur_hdr = cur_hdr->up;
+				copy_node->down = save_node;
+            }
+			save_node = copy_node;
+			
+			SkipNode<ValueT>* cursor = cur_hdr->right; 		
+            if (cursor == nullptr) {					    //本层链表 无数据
+				cur_hdr->right = copy_node;					//
+				break; 
+			} else
+                while (true) { 									// 于当前链表循环向右寻找可插入点，并在找到后跳出当前循环
+                    if (*copy_node < *cursor) {				    // 元素小于当前链表所有元素，插入链表头
+                        cur_hdr->right = copy_node;
+                        copy_node->next() = cursor;
+                        break;
+                    }
+                    else if (cursor->next() == nullptr) {		// 元素大于当前链表所有元素，插入链表尾
+                        cursor->next() = copy_node;
+                        break;
+                    }
+                    else if (*copy_node < *cursor->next()) {	    // 插入链表中间
+                        copy_node->next() = cursor->next();
+                        cursor->next() = copy_node;
+                        break;
+                    }
+                    cursor = cursor->next(); 					// 右移动游标
+                }
+		} while (random());
+	}
+
+																/* 查询元素 */
+	bool search(SkipNode<ValueT>* node) const {
+		if (hdr->right == nullptr) {							// 判断链表头右侧空指针
+			return false;
+		}
+		Level_End* cur_hdr = hdr;
+		
+		for (int i = 0; i < lvl_num; i++) {						//lvl由高至低 快速锁定位置
+			if (*node < *cur_hdr->right) {
+				cur_hdr = cur_hdr->down;
+			}
+			else {
+				SkipNode<ValueT>* cursor = cur_hdr->right;
+				while (cursor->down() != nullptr) {
+					while (cursor->next() != nullptr) {
+						if (*node <= *cursor->next()) {
+							break;
+						}
+						cursor = cursor->next();
+					}
+					cursor = cursor->down();
+				}
+				while (cursor->next() != nullptr) {
+					if (*node > *cursor->next()) {
+						cursor = cursor->next();
+					}
+					else if (*node == *cursor->next())
+						return true;
+					else 
+						return false;
+				}
+				return false; 										// 节点大于L1最后一个元素节点，返回false
+			}
+		}
+		return false; 												// 找不到接入点，则直接返回false;
+	}
+																	/* 删除元素 */
+	void remove(SkipNode<ValueT>* node) {
+		if (hdr->right == nullptr) {
+			return;
+		}
+		Level_End* cur_hdr = hdr;
+		SkipNode<ValueT>* cursor = cur_hdr->right;
+		int lvl_counter = lvl_num; 									// 删除过程中，层数中途发生变化，循环之前要获取它的值。
+		for (int i = 0; i < lvl_num; i++) {
+			if (*node == *cur_hdr->right) {
+				SkipNode<ValueT>* delptr = cur_hdr->right;
+				cur_hdr->right = cur_hdr->right->next();
+				delete delptr;
+			}
+			else {
+				SkipNode<ValueT> *cursor = cur_hdr->right;
+				while (cursor->next() != nullptr) {
+					if (*node == *cursor->next()) { 				// 找到节点->删除->跳出循环
+						SkipNode<ValueT>* delptr = cursor->next();
+						cursor->next() = cursor->next()->next();
+						delete delptr;
+						break;
+					}
+					cursor = cursor->next();
+				}
+			}
+			
+			if (cur_hdr->right == nullptr) {						// 向下移动链表头指针的时候需要先判断当前链表中是否还存在SkipNode节点
+				Level_End* delhdr = cur_hdr;
+				cur_hdr = cur_hdr->down;
+				hdr = cur_hdr;
+				delete delhdr;
+				lvl_num--;
+			}
+			else {
+				cur_hdr = cur_hdr->down;
+			}
+		}
+	}
+};
+
+
+#endif // !_SKIPLIST_ENTRY_H_
+
+
+int main(void)
+{
+	SkipList<int> lst;
+	SkipNode<int> ff1(1, 123);
+	lst.insert(&ff1);
+	SkipNode<int> ff2(2, 234);
+	lst.search(&ff2);
+	lst.remove(&ff2);
+
+	if (lst.search(&ff2))
+		cout << " lst.search(&ff2)";
+
+	cin.get();
+	
+	return 0;
+}

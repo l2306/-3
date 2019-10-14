@@ -1,0 +1,97 @@
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <pthread.h>
+#include <mysql/mysql.h>
+
+#include "mysq_pool.h"
+
+int tst();
+
+int tst()
+{
+	int ret=0;
+	sql_pool_setInfo("192.168.216.131", "root", "1234567", "mydb",0);
+	sql_pool_create(10);
+
+	SQL_SOCK_NODE* node=get_db_connect_from_pool();
+	const char query[] = "select *from dept";
+	ret = mysql_query(node->mysql_sock, query);
+	if (ret != 0)
+	{
+		ret =  mysql_errno(node->mysql_sock) ;
+		printf("func mysql_query() err \n");
+		return ret;	
+	}
+	
+	//获取结果集合 
+	//结果集合中 可以含有10行数据
+	MYSQL_RES *result = mysql_store_result(node->mysql_sock);
+	
+	MYSQL_ROW row = NULL;
+	while (row = mysql_fetch_row(result) ) 
+	{
+		printf("%s, %s, %s, \n",row[0], row[1],row[2]);
+
+		// 自己查找 如何 获取 selct查询 有多少列
+		//自己查找 获取表头的函数 ...
+	}
+	
+	mysql_free_result(result);
+	
+	
+
+/*	int i=0;
+	while(get_db_connect_from_pool())
+		printf("-----------%d\n",++i);
+
+	release_sock_to_sql_pool(node);
+	while(get_db_connect_from_pool())
+		printf("-----------%d\n",--i);*/
+getchar();
+
+	sql_pool_destroy();
+}
+
+/*
+查看内存泄漏
+	gcc mysql_pool.c -o mysq -I/usr/include/ -L/usr/lib64/mysql 
+		-lmysqlclient -lm -lrt -ldl -lstdc++ -lpthread -rdynamic
+
+	valgrind --leak-check=yes ./mysq
+
+	gcc *.c -g -o aa -lpthread -rdynamic
+	valgrind --leak-check=yes ./aa
+*/
+
+
+//二级指针 三种内存模型
+
+//二级指针 从分配内存的 角度 输入和输出...
+
+/*
+char ** mysql_store_result (MYSQL_RES *res)
+{
+	int i = 0;
+	char **p = (char **) malloc(sizeof(char *)  * 7);
+	for (i=0; i<7 ; i++)
+	{
+		p[i] = (char *)malloc(100*sizeof(char) )_;
+		strcpy(p[i], "aaaaaa") ;
+	}
+	
+}
+
+int  mysql_store_result (MYSQL_RES *res, char ***myp)
+{
+	int i = 0;
+	char **p = (char **) malloc(sizeof(char *)  * 7);
+	for (i=0; i<7 ; i++)
+	{
+		p[i] = (char *)malloc(100*sizeof(char) )_;
+		strcpy(p[i], "aaaaaa") ;
+	}
+	*myp = p;
+}
+*/
